@@ -1,0 +1,38 @@
+services:
+  app:
+    build: .
+    container_name: ${SERVICE_NAME}
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - /home:/home:ro
+    environment:
+      - DOCKER_HOST=${DOCKER_HOST:-tcp://socket-proxy:2375}
+      - TURSO_DATABASE_URL=${TURSO_DATABASE_URL}
+      - TURSO_AUTH_TOKEN=${TURSO_AUTH_TOKEN}
+    networks:
+      - proxy
+      - socket-proxy
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Router
+      - "traefik.http.routers.${SERVICE_NAME}.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${SERVICE_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${SERVICE_NAME}.tls=true"
+      - "traefik.http.routers.${SERVICE_NAME}.service=${SERVICE_NAME}-svc"
+
+      # HTTP to HTTPS Redirect
+      - "traefik.http.routers.${SERVICE_NAME}-red.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${SERVICE_NAME}-red.entrypoints=web"
+      - "traefik.http.routers.${SERVICE_NAME}-red.middlewares=https-redirect@docker"
+
+      # Service Definition
+      - "traefik.http.services.${SERVICE_NAME}-svc.loadbalancer.server.port=${APP_PORT:-8000}"
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK}
+    external: true
+  socket-proxy:
+    name: ${SOCKET_PROXY_NETWORK}
+    external: true

@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+
+# appctl - Lightweight CLI wrapper for Docker Compose in proxy-net network
+# Loaded with secrets dynamically decrypted from sops-nix at /run/secrets/traefik-deployments.env
+
+set -e
+
+ENV_FILE="/run/secrets/rendered/traefik-deployments.env"
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check if environment secrets exist
+if [ ! -f "$ENV_FILE" ]; then
+  echo "⚠️  Error: Secrets file not found at $ENV_FILE"
+  echo "Please make sure your NixOS system has sops-nix active and has rebuilt correctly."
+  exit 1
+fi
+
+# Source the unified secrets/configuration
+# Disable shell check warning for sourcing
+# shellcheck disable=SC1090
+set -a
+source "$ENV_FILE"
+set +a
+
+# Helper to load and map app-specific environment variables
+load_app_env() {
+  local app=$1
+  case "$app" in
+    excalidraw)
+      export DOMAIN="$EXCALIDRAW_DOMAIN"
+      export NETWORK_NAME="$PROXY_NETWORK"
+      export CERT_RESOLVER="$CERT_RESOLVER"
+      ;;
+    jellyfin)
+      export SERVICE_NAME="$JELLYFIN_SERVICE_NAME"
+      export CONTAINER_NAME="$JELLYFIN_CONTAINER_NAME"
+      export IMAGE_TAG="$JELLYFIN_IMAGE_TAG"
+      export SERVICE_DOMAIN="$JELLYFIN_DOMAIN"
+      export TZ="$JELLYFIN_TZ"
+      export PUID="$JELLYFIN_PUID"
+      export PGID="$JELLYFIN_PGID"
+      export MEDIA_PATH="$JELLYFIN_MEDIA_PATH"
+      export PROXY_NETWORK="$PROXY_NETWORK"
+      export HTTP_ENTRYPOINT="$JELLYFIN_HTTP_ENTRYPOINT"
+      export HTTPS_ENTRYPOINT="$JELLYFIN_HTTPS_ENTRYPOINT"
+      export CERT_RESOLVER="$CERT_RESOLVER"
+      export RATE_LIMIT_AVG="$JELLYFIN_RATE_LIMIT_AVG"
+      export RATE_LIMIT_BURST="$JELLYFIN_RATE_LIMIT_BURST"
+      ;;
+    learning)
+      export SERVICE_NAME="$LEARNING_SERVICE_NAME"
+      export SERVICE_DOMAIN="$LEARNING_DOMAIN"
+      export APP_PORT="$LEARNING_APP_PORT"
+      export PROXY_NETWORK="$PROXY_NETWORK"
+      export SOCKET_PROXY_NETWORK="$LEARNING_SOCKET_PROXY_NETWORK"
+      export TURSO_DATABASE_URL="$TURSO_DATABASE_URL"
+      export TURSO_AUTH_TOKEN="$TURSO_AUTH_TOKEN"
+      ;;
+    mermaid)
+      export SERVICE_DOMAIN="$MERMAID_DOMAIN"
+      export PROXY_NETWORK="$PROXY_NETWORK"
+      export SERVICE_NAME="$MERMAID_SERVICE_NAME"
+      ;;
+    mongo-docker)
+      export MONGO_ROOT_USERNAME="$MONGO_ROOT_USERNAME"
+      export MONGO_ROOT_PASSWORD="$MONGO_ROOT_PASSWORD"
+      export MONGO_DOMAIN="$MONGO_DOMAIN"
+      export CERT_RESOLVER="$CERT_RESOLVER"
+      export PROXY_NETWORK="$PROXY_NETWORK"
+      ;;
+    pgsql)
+      export POSTGRES_USER="$POSTGRES_USER"
+      export POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
+      export POSTGRES_DB="$POSTGRES_DB"
+      export POSTGRES_DOMAIN="$POSTGRES_DOMAIN"
+      export CERT_RESOLVER="$CERT_RESOLVER"
+      export PROXY_NETWORK="$PROXY_NETWORK"
+      ;;
+    ollama)
+      export SERVICE_DOMAIN="$OLLAMA_DOMAIN"
+      export OLLAMA_API_KEY="$OLLAMA_API_KEY"
+      export PROXY_NETWORK="$PROXY_NETWORK"
+      export REPLICAS="$OLLAMA_REPLICAS"
+      export OLLAMA_DATA_VOLUME="$OLLAMA_DATA_VOLUME"
+      ;;
+    *)
+      echo "Unknown service: $app"
+      exit 1
+      ;;
+  esac
+}
+
+show_help() {
+  echo "Usage: appctl <command> [service]"
+  echo ""
+  echo "Commands:"
+  echo "  list, status      List status of all applications"
+  echo "  up <service>      Start a service"
+  echo "  down <service>    Stop a service"
+  echo "  restart <service> Restart a service"
+  echo "  logs <service>    Stream service logs"
+  echo "  config <service>  Show active configuration for a service"
+}
+
+get_apps() {
+  # Scan directories containing a docker-compose.yml file
+  find "$BASE_DIR" -maxdepth 2 -name "docker-compose.yml" | xargs -I {} dirname {} | xargs -I {} basename {} | sort
+}
+
+cmd_list() {
+  printf "%-20s %-15s %-30s\n" "SERVICE" "STATUS" "DOMAINS/PORTS"
+  printf "%-20s %-15s %-30s\n" "-------" "------" "-------------"
+  
+  for app in $(get_apps); do
+    load_app_env "$app"
+    local app_dir="$BASE_DIR/$app"
+    
+    # Run docker compose to check status
+    if cd "$app_dir" >/dev/null 2>&1; then
+      # Check if any container is running in the project
+      local status
+      local domain_info=""
+      
+      if [ "$(docker compose ps --format json | wc -l)" -gt 0 ]; then
+        status="🟢 Running"
+      else
+        status="🔴 Stopped"
+      fi
+
+      case "$app" in
+        excalidraw)   domain_info="$EXCALIDRAW_DOMAIN" ;;
+        jellyfin)     domain_info="$JELLYFIN_DOMAIN" ;;
+        learning)     domain_info="$LEARNING_DOMAIN" ;;
+        mermaid)      domain_info="$MERMAID_DOMAIN" ;;
+        mongo-docker) domain_info="$MONGO_DOMAIN" ;;
+        pgsql)        domain_info="$POSTGRES_DOMAIN" ;;
+        ollama)       domain_info="$OLLAMA_DOMAIN" ;;
+      esac
+      
+      printf "%-20s %-15s %-30s\n" "$app" "$status" "$domain_info"
+    fi
+  done
+}
+
+if [ $# -lt 1 ]; then
+  show_help
+  exit 1
+fi
+
+COMMAND=$1
+APP=$2
+
+case "$COMMAND" in
+  list|status)
+    cmd_list
+    ;;
+  up)
+    if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
+    load_app_env "$APP"
+    echo "🚀 Starting $APP..."
+    cd "$BASE_DIR/$APP" && docker compose up -d
+    ;;
+  down)
+    if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
+    load_app_env "$APP"
+    echo "🛑 Stopping $APP..."
+    cd "$BASE_DIR/$APP" && docker compose down
+    ;;
+  restart)
+    if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
+    load_app_env "$APP"
+    echo "🔄 Restarting $APP..."
+    cd "$BASE_DIR/$APP" && docker compose down && docker compose up -d
+    ;;
+  logs)
+    if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
+    load_app_env "$APP"
+    cd "$BASE_DIR/$APP" && docker compose logs -f "${@:3}"
+    ;;
+  config)
+    if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
+    load_app_env "$APP"
+    echo "=== Active Environment Variables for $APP ==="
+    env | grep -E "^(PROXY_NETWORK|CERT_RESOLVER|DOMAIN|SERVICE_DOMAIN|SERVICE_NAME|CONTAINER_NAME|IMAGE_TAG|TZ|PUID|PGID|MEDIA_PATH|HTTP_ENTRYPOINT|HTTPS_ENTRYPOINT|RATE_LIMIT_AVG|RATE_LIMIT_BURST|APP_PORT|SOCKET_PROXY_NETWORK|TURSO_DATABASE_URL|TURSO_AUTH_TOKEN|DOCKER_HOST|MONGO_ROOT_USERNAME|MONGO_ROOT_PASSWORD|MONGO_DOMAIN|POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|POSTGRES_DOMAIN|OLLAMA_API_KEY|REPLICAS|OLLAMA_DATA_VOLUME)" | sort
+    ;;
+  *)
+    show_help
+    exit 1
+    ;;
+esac

@@ -1,0 +1,13 @@
+# Environment variables
+.env
+
+# Docker logs
+logs/
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Application specific
+ollama_data/

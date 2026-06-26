@@ -1,0 +1,57 @@
+services:
+  mongo:
+    image: mongo:8.0-noble
+    container_name: mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.mongodb.rule=HostSNI(`${MONGO_DOMAIN}`)"
+      - "traefik.tcp.routers.mongodb.entrypoints=websecure"
+      - "traefik.tcp.routers.mongodb.tls=true"
+      - "traefik.tcp.routers.mongodb.tls.certresolver=${CERT_RESOLVER}"
+      - "traefik.tcp.routers.mongodb.service=mongodb-svc"
+      - "traefik.tcp.services.mongodb-svc.loadbalancer.server.port=27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./keyfile:/etc/mongodb-keyfile:ro
+    entrypoint: >
+      bash -c "
+        cp /etc/mongodb-keyfile /tmp/keyfile &&
+        chmod 400 /tmp/keyfile &&
+        chown mongodb:mongodb /tmp/keyfile &&
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/keyfile
+      "
+
+  mongo-init:
+    image: mongo:8.0-noble
+    depends_on:
+      - mongo
+    networks:
+      - proxy
+    entrypoint: >
+      bash -c "sleep 5 &&
+      mongosh --host mongo:27017
+      -u ${MONGO_ROOT_USERNAME} -p ${MONGO_ROOT_PASSWORD}
+      --authenticationDatabase admin
+      --eval '
+        rs.initiate({
+          _id: \"rs0\",
+          members: [{ _id: 0, host: \"mongo:27017\" }]
+        })
+      ' || true"
+    restart: "no"
+
+volumes:
+  mongodb_data:
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK}
+    external: true

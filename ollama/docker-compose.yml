@@ -1,0 +1,56 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    deploy:
+      replicas: ${REPLICAS:-1}
+      restart_policy:
+        condition: on-failure
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ACCELERATE_SYSTEM=1
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - ${OLLAMA_DATA_VOLUME:-ollama_data}:/root/.ollama:rw
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # Router 1: API/Automation (Token-based)
+      - "traefik.http.routers.ollama-api.rule=Host(`${SERVICE_DOMAIN}`) && Header(`X-Ollama-Key`, `${OLLAMA_API_KEY}`)"
+      - "traefik.http.routers.ollama-api.entrypoints=websecure"
+      - "traefik.http.routers.ollama-api.tls=true"
+      - "traefik.http.routers.ollama-api.priority=100"
+      - "traefik.http.routers.ollama-api.service=ollama-svc"
+
+      - "traefik.http.routers.ollama-api-red.rule=Host(`${SERVICE_DOMAIN}`) && Header(`X-Ollama-Key`, `${OLLAMA_API_KEY}`)"
+      - "traefik.http.routers.ollama-api-red.entrypoints=web"
+      - "traefik.http.routers.ollama-api-red.middlewares=https-redirect@docker"
+      - "traefik.http.routers.ollama-api-red.priority=100"
+
+      # Router 2: Browser/Standard (Authelia Protected)
+      - "traefik.http.routers.ollama-browser.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.ollama-browser.entrypoints=websecure"
+      - "traefik.http.routers.ollama-browser.tls=true"
+      - "traefik.http.routers.ollama-browser.middlewares=authelia-auth@docker"
+      - "traefik.http.routers.ollama-browser.priority=50"
+      - "traefik.http.routers.ollama-browser.service=ollama-svc"
+
+      - "traefik.http.routers.ollama-browser-red.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.ollama-browser-red.entrypoints=web"
+      - "traefik.http.routers.ollama-browser-red.middlewares=https-redirect@docker"
+      - "traefik.http.routers.ollama-browser-red.priority=50"
+
+      # Shared Service
+      - "traefik.http.services.ollama-svc.loadbalancer.server.port=11434"
+
+      - "traefik.http.services.ollama-svc.loadbalancer.healthcheck.path=/api/tags"
+      - "traefik.http.services.ollama-svc.loadbalancer.healthcheck.interval=10s"
+
+volumes:
+  ollama_data:
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:-proxy-net}
+    external: true

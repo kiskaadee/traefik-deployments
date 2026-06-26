@@ -1,0 +1,16 @@
+# Environment secrets
+.env
+
+# Local data directories
+config/
+cache/
+metadata/
+transcodes/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+*.log

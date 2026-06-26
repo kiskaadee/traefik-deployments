@@ -1,0 +1,27 @@
+[project]
+name = "learning-hub"
+version = "0.1.0"
+description = "Learning Hub API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "sqlalchemy>=2.0.0",
+    "sqlalchemy-libsql>=0.2.0",
+    "psutil>=5.9.0",
+    "docker>=6.1.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.0",
+    "httpx>=0.24.0",
+]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+include = ["app"]
+exclude = ["**/__pycache__", ".venv", "**/.venv"]
+pythonVersion = "3.11"
