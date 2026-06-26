@@ -1,0 +1,38 @@
+services:
+  gitea:
+    image: gitea/gitea:${GITEA_VERSION:-latest}
+    container_name: ${CONTAINER_NAME:-gitea}
+    restart: always
+    environment:
+      - USER_UID=${USER_UID:-1000}
+      - USER_GID=${USER_GID:-1000}
+      # Gitea configuration via environment variables
+      - GITEA__database__DB_TYPE=${DB_TYPE:-sqlite3}
+      - GITEA__server__DOMAIN=${SERVICE_DOMAIN}
+      - GITEA__server__SSH_DOMAIN=${SSH_DOMAIN:-${SERVICE_DOMAIN}}
+      - GITEA__server__ROOT_URL=https://${SERVICE_DOMAIN}
+    volumes:
+      - ${DATA_PATH:-./data}:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - proxy-net
+    labels:
+      - "traefik.enable=true"
+      # WebSecure Router
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}.entrypoints=websecure"
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}.tls=true"
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}.middlewares=${AUTH_MIDDLEWARE}"
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}.service=${CONTAINER_NAME:-gitea}-svc"
+      # HTTP to HTTPS Redirect Router
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}-red.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}-red.entrypoints=web"
+      - "traefik.http.routers.${CONTAINER_NAME:-gitea}-red.middlewares=${HTTPS_REDIRECT_MIDDLEWARE}"
+      # Service definition
+      - "traefik.http.services.${CONTAINER_NAME:-gitea}-svc.loadbalancer.server.port=3000"
+
+networks:
+  proxy-net:
+    name: ${PROXY_NETWORK:-proxy-net}
+    external: true
