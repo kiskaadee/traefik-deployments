@@ -5,18 +5,6 @@ from . import models, controllers, database
 
 router = APIRouter(prefix="/api")
 
-@router.get("/system-stats")
-def read_system_stats() -> Dict[str, Any]:
-    return controllers.get_system_stats()
-
-@router.get("/services")
-def read_services() -> Dict[str, Any]:
-    return controllers.get_docker_services()
-
-@router.get("/bookmarks")
-def read_bookmarks() -> Dict[str, Any]:
-    return controllers.get_bookmarks()
-
 @router.get("/courses", response_model=List[models.Course])
 def read_courses(db: Session = Depends(database.get_db)) -> List[models.ORMCourse]:
     return controllers.get_courses(db)
@@ -38,3 +26,4 @@ def delete_course(course_id: int, db: Session = Depends(database.get_db)) -> Dic
     if not success:
         raise HTTPException(status_code=404, detail="Course not found")
     return {"message": "Course deleted"}
+

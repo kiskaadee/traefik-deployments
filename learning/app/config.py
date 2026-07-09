@@ -9,15 +9,12 @@ class Settings(BaseSettings):
 
     # Infrastructure Networks
     PROXY_NETWORK: str = "proxy-net"
-    SOCKET_PROXY_NETWORK: str = "socket-net"
 
     # Application Secrets (Turso)
     TURSO_DATABASE_URL: Optional[str] = None
     TURSO_AUTH_TOKEN: Optional[str] = None
 
-    # System Configuration
-    DOCKER_HOST: str = "tcp://socket-proxy:2375"
-
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
+
