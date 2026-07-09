@@ -1,0 +1,31 @@
+services:
+  docs:
+    build: .
+    container_name: ${SERVICE_NAME}
+    restart: unless-stopped
+    volumes:
+      - ${PROJECT_PATH:-./data}:/docs:ro
+    environment:
+      - DOCS_ROOT=/docs
+      - PORT=8000
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${SERVICE_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${SERVICE_NAME}.tls=true"
+      - "traefik.http.routers.${SERVICE_NAME}.service=${SERVICE_NAME}-svc"
+      
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.${SERVICE_NAME}-red.rule=Host(`${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${SERVICE_NAME}-red.entrypoints=web"
+      - "traefik.http.routers.${SERVICE_NAME}-red.middlewares=https-redirect@docker"
+      
+      # Target Port
+      - "traefik.http.services.${SERVICE_NAME}-svc.loadbalancer.server.port=8000"
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK}
+    external: true
