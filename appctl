@@ -178,7 +178,7 @@ case "$COMMAND" in
     if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
     load_app_env "$APP"
     echo "🚀 Starting $APP..."
-    cd "$BASE_DIR/$APP" && docker compose up -d
+    cd "$BASE_DIR/$APP" && docker compose up --build -d
     ;;
   down)
     if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
@@ -190,7 +190,7 @@ case "$COMMAND" in
     if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
     load_app_env "$APP"
     echo "🔄 Restarting $APP..."
-    cd "$BASE_DIR/$APP" && docker compose down && docker compose up -d
+    cd "$BASE_DIR/$APP" && docker compose down && docker compose up --build -d
     ;;
   logs)
     if [ -z "$APP" ]; then echo "Error: Service name required"; exit 1; fi
