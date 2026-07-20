@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     volumes:
       - ${PROJECT_PATH:-./data}:/docs:ro
+      - ./app:/app:ro
     environment:
       - DOCS_ROOT=/docs
       - PORT=8000

@@ -164,6 +164,43 @@ def process_alerts(html):
     return pattern.sub(replace_alert, html)
 
 
+def preserve_math(text):
+    """Protect LaTeX math blocks ($...$ and $$...$$) from being altered by Markdown parser."""
+    math_blocks = []
+    
+    # Stash inline code and code blocks first to avoid stashing math inside code blocks
+    code_blocks = []
+    def stash_code(m):
+        code_blocks.append(m.group(0))
+        return f"CODEBLOCKTOKEN{len(code_blocks)-1}END"
+    
+    # Match ``` ``` code blocks and ` ` inline code
+    text = re.sub(r'```.*?```', stash_code, text, flags=re.DOTALL)
+    text = re.sub(r'`[^`\n]+`', stash_code, text)
+
+    def stash_math(m):
+        math_blocks.append(m.group(0))
+        return f"MATHBLOCKTOKEN{len(math_blocks)-1}END"
+
+    # Match display math $$...$$
+    text = re.sub(r'\$\$.*?\$\$', stash_math, text, flags=re.DOTALL)
+    # Match inline math $...$ (ensuring single $ on same line, not empty)
+    text = re.sub(r'(?<!\\)\$([^\$\n]+?)(?<!\\)\$', stash_math, text)
+
+    # Restore code blocks back to markdown text
+    for i, code in enumerate(code_blocks):
+        text = text.replace(f"CODEBLOCKTOKEN{i}END", code)
+
+    return text, math_blocks
+
+
+def restore_math(html, math_blocks):
+    """Restore stashed math blocks after Markdown conversion."""
+    for i, block in enumerate(math_blocks):
+        html = html.replace(f"MATHBLOCKTOKEN{i}END", block)
+    return html
+
+
 def generate_folder_index(folder_path, rel_url_path):
     """Renders a directory list when no index README is present."""
     try:
@@ -276,8 +313,10 @@ class DocsHTTPHandler(BaseHTTPRequestHandler):
                 return
                 
             # Render Markdown
+            md_content, math_blocks = preserve_math(md_content)
             md = markdown.Markdown(extensions=['extra', 'toc', 'nl2br'])
             html_content = md.convert(md_content)
+            html_content = restore_math(html_content, math_blocks)
             html_content = process_alerts(html_content)
             
             toc_html = md.toc
