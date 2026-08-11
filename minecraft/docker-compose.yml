@@ -11,13 +11,12 @@ services:
       - VERSION=${VERSION:-LATEST}
       - MEMORY=${MEMORY:-2G}
       - TZ=${TZ:-UTC}
+      - ONLINE_MODE=FALSE
+      - PLUGINS=https://github.com/AuthMe/AuthMeReloaded/releases/download/5.6.0/AuthMe-5.6.0.jar
     volumes:
-      - minecraft_data:/data
+      - ./data:/data
     networks:
       - proxy
-
-volumes:
-  minecraft_data:
 
 networks:
   proxy:
