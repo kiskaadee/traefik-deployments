@@ -51,6 +51,7 @@ To simplify service management across the homelab, a lightweight Bash utility na
 * **`jellyfin/`**: Media server for movies, shows, and music.
 * **`learning/`**: Local learning hub dashboard connected to a Turso/SQLite database and docker socket proxy.
 * **`mermaid/`**: Live diagramming editor.
+* **`minecraft/`**: Minecraft Java Edition server.
 * **`mongo-docker/`**: MongoDB instance with replica sets initialized.
 * **`pgsql/`**: PostgreSQL database container.
 * **`ollama/`**: Local Large Language Model API server.
