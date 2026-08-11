@@ -18,6 +18,31 @@ services:
     networks:
       - proxy
 
+  web:
+    build: ./web
+    container_name: minecraft-web-admin
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      - JWT_SECRET=${MINECRAFT_JWT_SECRET:-supersecurejwtsecretvalueforlocaldevelopmentonly}
+    volumes:
+      - ./data/plugins/AuthMe:/app/db:rw
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Router
+      - "traefik.http.routers.minecraft-web.rule=Host(`${MINECRAFT_DOMAIN}`)"
+      - "traefik.http.routers.minecraft-web.entrypoints=websecure"
+      - "traefik.http.routers.minecraft-web.tls=true"
+      - "traefik.http.routers.minecraft-web.service=minecraft-web-svc"
+      # HTTP to HTTPS Redirect
+      - "traefik.http.routers.minecraft-web-red.rule=Host(`${MINECRAFT_DOMAIN}`)"
+      - "traefik.http.routers.minecraft-web-red.entrypoints=web"
+      - "traefik.http.routers.minecraft-web-red.middlewares=https-redirect@docker"
+      # Service definition
+      - "traefik.http.services.minecraft-web-svc.loadbalancer.server.port=8000"
+
 networks:
   proxy:
     name: ${PROXY_NETWORK:-proxy-net}

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Identity Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.7);
+            --border-color: rgba(240, 246, 252, 0.1);
+            --primary: #00f2fe;
+            --primary-glow: rgba(0, 242, 254, 0.25);
+            --secondary: #4facfe;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.2);
+            --text-color: #c9d1d9;
+            --text-muted: #8b949e;
+            --text-bright: #f0f6fc;
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.25);
+            --font-family: 'Outfit', sans-serif;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.05) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(79, 172, 254, 0.05) 0%, transparent 40%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Container & Navigation */
+        header {
+            width: 100%;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-bright);
+            text-decoration: none;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo img {
+            height: 32px;
+            filter: drop-shadow(0 0 8px var(--primary-glow));
+        }
+
+        .user-nav-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-nav-badge {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-nav-badge .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .btn-logout {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .btn-logout:hover {
+            color: var(--danger);
+            background: var(--danger-glow);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        main {
+            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 40px 20px;
+        }
+
+        /* Auth Screen (Hidden by default or shown) */
+        #auth-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(13, 17, 23, 0.95);
+            z-index: 1000;
+            transition: var(--transition);
+        }
+
+        .auth-card {
+            width: 400px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .auth-card h2 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: var(--text-bright);
+        }
+
+        .auth-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-bright);
+            font-family: var(--font-family);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #000;
+            font-weight: 600;
+            font-family: var(--font-family);
+            font-size: 1rem;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 14px var(--primary-glow);
+            transition: var(--transition);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        .btn-secondary-link {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 16px;
+            text-decoration: underline;
+            transition: var(--transition);
+        }
+
+        .btn-secondary-link:hover {
+            color: var(--text-bright);
+        }
+
+        /* App Screen */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 30px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 24px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 12px 16px;
+            color: var(--text-muted);
+            font-family: var(--font-family);
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: var(--transition);
+        }
+
+        .sidebar-btn:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-bright);
+        }
+
+        .sidebar-btn.active {
+            background: rgba(0, 242, 254, 0.08);
+            border-color: rgba(0, 242, 254, 0.2);
+            color: var(--primary);
+        }
+
+        .content-panel {
+            padding: 32px;
+            min-height: 500px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .panel-header h2 {
+            font-size: 1.75rem;
+            color: var(--text-bright);
+        }
+
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .stat-card h3 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-bright);
+        }
+
+        /* Modern Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            margin-top: 10px;
+        }
+
+        th {
+            padding: 16px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(240, 246, 252, 0.05);
+            font-size: 0.95rem;
+            color: var(--text-color);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+            color: var(--text-bright);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-admin {
+            background-color: rgba(0, 242, 254, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+        }
+
+        .badge-player {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .badge-pending {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            font-weight: 500;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-bright);
+        }
+
+        .btn-action-danger:hover {
+            background: var(--danger-glow);
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-action-primary:hover {
+            background: var(--primary-glow);
+            color: var(--primary);
+            border-color: rgba(0, 242, 254, 0.2);
+        }
+
+        /* Modal Overlay & Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+        }
+
+        .modal-card {
+            width: 450px;
+            padding: 32px;
+            position: relative;
+        }
+
+        .modal-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: var(--text-bright);
+        }
+
+        .modal-card p {
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .modal-close:hover {
+            color: var(--text-bright);
+        }
+
+        /* Dynamic notices (toasts) */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            min-width: 300px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        .toast-success {
+            background-color: var(--accent);
+            color: #ffffff;
+        }
+
+        .toast-error {
+            background-color: var(--danger);
+            color: #ffffff;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Utility helper classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .row-flex {
+            display: flex;
+            gap: 16px;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .card-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .info-box {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="glass-panel" id="main-header">
+        <a href="#" class="logo">
+            <!-- Simple custom SVG icon representing a block/minecraft motif -->
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="url(#logo-grad)" stroke-width="2"/>
+                <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="url(#logo-grad)" stroke-width="2" fill="url(#logo-grad)"/>
+                <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="url(#logo-grad)" stroke-width="2"/>
+                <rect x="13" y="13" width="8" height="8" rx="1.5" stroke="url(#logo-grad)" stroke-width="2"/>
+                <defs>
+                    <linearGradient id="logo-grad" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#00f2fe"/>
+                        <stop offset="1" stop-color="#4facfe"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <span>MINECRAFT ADMIN</span>
+        </a>
+        <div class="user-nav-info">
+            <div class="user-nav-badge">
+                <span class="status-dot"></span>
+                <span id="nav-username">username</span>
+                <span class="badge badge-player" id="nav-role" style="margin-left: 8px;">PLAYER</span>
+            </div>
+            <button class="btn-logout" onclick="logout()">LOGOUT</button>
+        </div>
+    </header>
+
+    <!-- Login/Auth Screen -->
+    <div id="auth-screen">
+        <div class="auth-card glass-panel" id="login-container">
+            <h2>Sign In</h2>
+            <p>Access the Minecraft Identity Manager</p>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-username">Minecraft Username</label>
+                    <input type="text" id="login-username" class="form-control" placeholder="e.g. kiskaadee" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">In-Game Password</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-submit">Sign In</button>
+            </form>
+            <button class="btn-secondary-link" onclick="showResetRequestModal()">Forgot your password? Request reset</button>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main>
+        <div class="dashboard-grid">
+            <!-- Sidebar Navigation -->
+            <div class="sidebar glass-panel">
+                <button class="sidebar-btn active" onclick="switchTab('dashboard')" id="tab-btn-dashboard">
+                    📊 Dashboard
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('directory')" id="tab-btn-directory">
+                    👥 Player Directory
+                </button>
+                <button class="sidebar-btn hidden" onclick="switchTab('resets')" id="tab-btn-resets">
+                    🚨 Reset Requests
+                </button>
+                <button class="sidebar-btn" onclick="switchTab('profile')" id="tab-btn-profile">
+                    👤 My Profile
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-panel glass-panel">
+                <!-- Tab: Dashboard -->
+                <div id="tab-dashboard" class="tab-content">
+                    <div class="panel-header">
+                        <h2>Dashboard</h2>
+                    </div>
+                    <div class="stat-cards">
+                        <div class="stat-card glass-panel">
+                            <h3>Total Players</h3>
+                            <div class="value" id="stat-total-players">0</div>
+                        </div>
+                        <div class="stat-card glass-panel" id="stat-card-pending-resets">
+                            <h3>Pending Password Resets</h3>
+                            <div class="value" id="stat-pending-resets">0</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <h3>User Role</h3>
+                            <div class="value" id="stat-user-role" style="font-size: 1.5rem; text-transform: uppercase;">PLAYER</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        This web dashboard is integrated with the in-game authentication database. Any password resets or player additions here take effect immediately in the game next time a player connects.
+                    </div>
+                </div>
+
+                <!-- Tab: Directory -->
+                <div id="tab-directory" class="tab-content hidden">
+                    <div class="panel-header">
+                        <h2>Player Directory</h2>
+                        <button class="btn-action btn-action-primary hidden" id="btn-show-create-player" onclick="showCreatePlayerModal()">+ Add New Player</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Realname</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Registration Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="directory-tbody">
+                                <!-- Dynamically filled -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab: Resets -->
+                <div id="tab-resets" class="tab-content hidden">
+                    <div class="panel-header">
+                        <h2>Pending Password Resets</h2>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Requested At</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resets-tbody">
+                                <!-- Dynamically filled -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab: Profile -->
+                <div id="tab-profile" class="tab-content hidden">
+                    <div class="panel-header">
+                        <h2>My Profile</h2>
+                    </div>
+                    <div style="max-width: 500px;">
+                        <h3 style="margin-bottom: 20px; color: var(--text-bright);">Change Account Password</h3>
+                        <form onsubmit="handleSelfPasswordChange(event)">
+                            <div class="form-group">
+                                <label for="change-old-password">Current Password</label>
+                                <input type="password" id="change-old-password" class="form-control" placeholder="••••••••" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="change-new-password">New Password</label>
+                                <input type="password" id="change-new-password" class="form-control" placeholder="••••••••" minlength="5" required>
+                            </div>
+                            <button type="submit" class="btn-submit" style="width: auto; padding: 12px 30px;">Update Password</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Request Reset -->
+    <div class="modal-overlay" id="modal-request-reset" onclick="closeModalOnOverlay(event, 'modal-request-reset')">
+        <div class="modal-card glass-panel">
+            <button class="modal-close" onclick="closeModal('modal-request-reset')">&times;</button>
+            <h3>Request Password Reset</h3>
+            <p>If you forgot your password, submit your username here. A server administrator will need to manually approve it.</p>
+            <form onsubmit="handleRequestReset(event)">
+                <div class="form-group">
+                    <label for="reset-username">Minecraft Username</label>
+                    <input type="text" id="reset-username" class="form-control" placeholder="e.g. kiskaadee" required>
+                </div>
+                <button type="submit" class="btn-submit">Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create Player -->
+    <div class="modal-overlay" id="modal-create-player" onclick="closeModalOnOverlay(event, 'modal-create-player')">
+        <div class="modal-card glass-panel">
+            <button class="modal-close" onclick="closeModal('modal-create-player')">&times;</button>
+            <h3>Add New Player</h3>
+            <p>Manually create a player profile. They can then log in using these credentials.</p>
+            <form onsubmit="handleCreatePlayer(event)">
+                <div class="form-group">
+                    <label for="create-username">Minecraft Username</label>
+                    <input type="text" id="create-username" class="form-control" placeholder="e.g. notch" required>
+                </div>
+                <div class="form-group">
+                    <label for="create-password">Initial Password</label>
+                    <input type="password" id="create-password" class="form-control" placeholder="••••••••" minlength="5" required>
+                </div>
+                <div class="form-group">
+                    <label for="create-email">Email (Optional)</label>
+                    <input type="email" id="create-email" class="form-control" placeholder="e.g. player@domain.com">
+                </div>
+                <div class="form-group">
+                    <label for="create-role">Role</label>
+                    <select id="create-role" class="form-control">
+                        <option value="player">Player</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-submit">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Approve Password Reset -->
+    <div class="modal-overlay" id="modal-approve-reset" onclick="closeModalOnOverlay(event, 'modal-approve-reset')">
+        <div class="modal-card glass-panel">
+            <button class="modal-close" onclick="closeModal('modal-approve-reset')">&times;</button>
+            <h3>Approve Password Reset</h3>
+            <p>Set a new temporary password for the player <strong id="approve-username-display">username</strong>.</p>
+            <form onsubmit="handleResolveReset(event)">
+                <input type="hidden" id="approve-username-hidden">
+                <div class="form-group">
+                    <label for="approve-new-password">Temporary Password</label>
+                    <input type="password" id="approve-new-password" class="form-control" placeholder="e.g. TempPass123" minlength="5" required>
+                </div>
+                <button type="submit" class="btn-submit">Save & Reset Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toasts notifications container -->
+    <div id="toast-container"></div>
+
+    <script>
+        // State variables
+        let currentUser = null;
+        let activeTab = 'dashboard';
+
+        // Helpers for Toast notifications
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <span style="margin-left: 20px; cursor: pointer; opacity: 0.7;" onclick="this.parentElement.remove()">&times;</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Modals management
+        function showModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        function closeModalOnOverlay(e, id) {
+            if (e.target.id === id) {
+                closeModal(id);
+            }
+        }
+
+        function showResetRequestModal() {
+            showModal('modal-request-reset');
+        }
+
+        function showCreatePlayerModal() {
+            showModal('modal-create-player');
+        }
+
+        function showApproveResetModal(username) {
+            document.getElementById('approve-username-display').innerText = username;
+            document.getElementById('approve-username-hidden').value = username;
+            document.getElementById('approve-new-password').value = '';
+            showModal('modal-approve-reset');
+        }
+
+        // Auth operations
+        async function fetchMe() {
+            try {
+                const response = await fetch('/api/me');
+                if (response.ok) {
+                    currentUser = await response.json();
+                    onAuthenticated();
+                } else {
+                    onUnauthenticated();
+                }
+            } catch (err) {
+                onUnauthenticated();
+            }
+        }
+
+        function onAuthenticated() {
+            document.getElementById('auth-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('auth-screen').style.display = 'none';
+            }, 300);
+            
+            document.getElementById('nav-username').innerText = currentUser.username;
+            document.getElementById('nav-role').innerText = currentUser.role;
+            document.getElementById('nav-role').className = `badge badge-${currentUser.role}`;
+            document.getElementById('stat-user-role').innerText = currentUser.role;
+
+            // Admin features
+            if (currentUser.role === 'admin') {
+                document.getElementById('tab-btn-resets').classList.remove('hidden');
+                document.getElementById('btn-show-create-player').classList.remove('hidden');
+                document.getElementById('stat-card-pending-resets').classList.remove('hidden');
+            } else {
+                document.getElementById('tab-btn-resets').classList.add('hidden');
+                document.getElementById('btn-show-create-player').classList.add('hidden');
+                document.getElementById('stat-card-pending-resets').classList.add('hidden');
+            }
+
+            refreshData();
+        }
+
+        function onUnauthenticated() {
+            document.getElementById('auth-screen').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('auth-screen').style.opacity = '1';
+            }, 50);
+            currentUser = null;
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (res.ok) {
+                    showToast('Logged in successfully!');
+                    document.getElementById('login-password').value = '';
+                    await fetchMe();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Login failed', 'error');
+                }
+            } catch (err) {
+                showToast('Network error during login', 'error');
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                showToast('Logged out successfully');
+                onUnauthenticated();
+            } catch (err) {
+                showToast('Failed to logout', 'error');
+            }
+        }
+
+        async function handleRequestReset(e) {
+            e.preventDefault();
+            const username = document.getElementById('reset-username').value;
+
+            try {
+                const res = await fetch('/api/reset-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+
+                if (res.ok) {
+                    showToast('Password reset requested successfully!');
+                    closeModal('modal-request-reset');
+                    document.getElementById('reset-username').value = '';
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Request failed', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            activeTab = tabId;
+            
+            // Toggle active state of sidebar buttons
+            document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+
+            // Hide/Show tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            refreshData();
+        }
+
+        // Data refresh loaders
+        async function refreshData() {
+            if (!currentUser) return;
+            
+            try {
+                // Get general users list
+                const usersRes = await fetch('/api/users');
+                if (usersRes.ok) {
+                    const users = await usersRes.json();
+                    document.getElementById('stat-total-players').innerText = users.length;
+                    renderDirectory(users);
+                }
+
+                // Get pending resets if admin
+                if (currentUser.role === 'admin') {
+                    const resetsRes = await fetch('/api/admin/reset-requests');
+                    if (resetsRes.ok) {
+                        const requests = await resetsRes.json();
+                        document.getElementById('stat-pending-resets').innerText = requests.length;
+                        renderResetRequests(requests);
+                    }
+                }
+            } catch (err) {
+                console.error("Error refreshing data:", err);
+            }
+        }
+
+        function renderDirectory(users) {
+            const tbody = document.getElementById('directory-tbody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                
+                // Format timestamp
+                let dateStr = 'Unknown';
+                if (user.regdate) {
+                    const date = new Date(user.regdate);
+                    dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+
+                const isAdmin = user.role === 'admin';
+                const isSelf = user.username.toLowerCase() === currentUser.username.toLowerCase();
+
+                // Action buttons based on permissions
+                let actionsHtml = '';
+                if (currentUser.role === 'admin') {
+                    actionsHtml = `
+                        <button class="btn-action" onclick="toggleRole('${user.username}', '${user.role}')">${isAdmin ? 'Demote' : 'Elevate'}</button>
+                        <button class="btn-action btn-action-primary" onclick="showApproveResetModal('${user.username}')">Reset Pass</button>
+                        <button class="btn-action btn-action-danger ${isSelf ? 'hidden' : ''}" onclick="deleteUser('${user.username}')">Delete</button>
+                    `;
+                } else {
+                    actionsHtml = `<span style="color: var(--text-muted); font-size: 0.85rem;">None</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td>${user.id}</td>
+                    <td><strong style="color: var(--text-bright);">${user.username}</strong></td>
+                    <td>${user.realname}</td>
+                    <td>${user.email || '<span style="color: var(--text-muted)">None</span>'}</td>
+                    <td><span class="badge badge-${user.role}">${user.role}</span></td>
+                    <td>${dateStr}</td>
+                    <td class="table-actions">${actionsHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderResetRequests(requests) {
+            const tbody = document.getElementById('resets-tbody');
+            tbody.innerHTML = '';
+
+            if (requests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px 0;">No pending reset requests found.</td></tr>';
+                return;
+            }
+
+            requests.forEach(req => {
+                const tr = document.createElement('tr');
+                
+                const requestedDate = new Date(req.requested_at);
+                const dateStr = requestedDate.toLocaleDateString() + ' ' + requestedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                tr.innerHTML = `
+                    <td><strong style="color: var(--text-bright);">${req.username}</strong></td>
+                    <td>${dateStr}</td>
+                    <td><span class="badge badge-pending">${req.status}</span></td>
+                    <td class="table-actions">
+                        <button class="btn-action btn-action-primary" onclick="showApproveResetModal('${req.username}')">Approve & Reset</button>
+                        <button class="btn-action btn-action-danger" onclick="resolveReset('${req.username}', 'reject')">Reject</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Actions handlers
+        async function handleSelfPasswordChange(e) {
+            e.preventDefault();
+            const old_password = document.getElementById('change-old-password').value;
+            const new_password = document.getElementById('change-new-password').value;
+
+            try {
+                const res = await fetch('/api/users/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password, new_password })
+                });
+
+                if (res.ok) {
+                    showToast('Password changed successfully!');
+                    document.getElementById('change-old-password').value = '';
+                    document.getElementById('change-new-password').value = '';
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Failed to change password', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function handleCreatePlayer(e) {
+            e.preventDefault();
+            const username = document.getElementById('create-username').value;
+            const password = document.getElementById('create-password').value;
+            const email = document.getElementById('create-email').value || null;
+            const role = document.getElementById('create-role').value;
+
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, email, role })
+                });
+
+                if (res.ok) {
+                    showToast(`Player ${username} created successfully!`);
+                    closeModal('modal-create-player');
+                    document.getElementById('create-username').value = '';
+                    document.getElementById('create-password').value = '';
+                    document.getElementById('create-email').value = '';
+                    refreshData();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Creation failed', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to permanently delete player account '${username}'? This deletes their game login profile.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/users/${username}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`Player ${username} deleted.`);
+                    refreshData();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Delete failed', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function toggleRole(username, currentRole) {
+            const newRole = currentRole === 'admin' ? 'player' : 'admin';
+            try {
+                const res = await fetch(`/api/users/${username}/role`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+
+                if (res.ok) {
+                    showToast(`Role for ${username} changed to ${newRole}`);
+                    refreshData();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Failed to change role', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function handleResolveReset(e) {
+            e.preventDefault();
+            const username = document.getElementById('approve-username-hidden').value;
+            const new_password = document.getElementById('approve-new-password').value;
+
+            const formData = new FormData();
+            formData.append('action', 'approve');
+            formData.append('new_password', new_password);
+
+            try {
+                const res = await fetch(`/api/admin/reset-requests/${username}/resolve`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    showToast(`Password for ${username} reset successfully!`);
+                    closeModal('modal-approve-reset');
+                    refreshData();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Action failed', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function resolveReset(username, action) {
+            const formData = new FormData();
+            formData.append('action', action);
+
+            try {
+                const res = await fetch(`/api/admin/reset-requests/${username}/resolve`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    showToast(`Reset request for ${username} rejected.`);
+                    refreshData();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Action failed', 'error');
+                }
+            } catch (err) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMe();
+            // Poll for data updates every 15 seconds while page is open
+            setInterval(() => refreshData(), 15000);
+        });
+
+    </script>
+</body>
+</html>
