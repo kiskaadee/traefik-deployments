@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict
 from . import models, controllers, database
 
 router = APIRouter(prefix="/api")
@@ -26,4 +26,3 @@ def delete_course(course_id: int, db: Session = Depends(database.get_db)) -> Dic
     if not success:
         raise HTTPException(status_code=404, detail="Course not found")
     return {"message": "Course deleted"}
-

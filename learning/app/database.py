@@ -1,5 +1,6 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import ExceptionContext
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 from typing import Generator
 from .config import settings
@@ -29,8 +30,16 @@ if settings.TURSO_DATABASE_URL and settings.TURSO_AUTH_TOKEN:
         SQLALCHEMY_DATABASE_URL,
         connect_args={
             "auth_token": settings.TURSO_AUTH_TOKEN,
-        }
+        },
+        pool_pre_ping=True,
+        pool_recycle=300,
     )
+    
+    @event.listens_for(engine, "handle_error")
+    def handle_exception(context: ExceptionContext) -> None:
+        orig = context.original_exception
+        if orig and any(msg in str(orig) for msg in ("stream not found", "WebSocket was closed", "closed websocket")):
+            context.is_disconnect = True
 else:
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
