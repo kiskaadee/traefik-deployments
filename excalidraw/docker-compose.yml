@@ -1,6 +1,7 @@
 services:
   excalidraw:
     image: excalidraw/excalidraw:latest
+    restart: unless-stopped
     environment:
       - REACT_APP_BACKEND_V2_GET_URL=https://${DOMAIN}/api/v2
       - REACT_APP_BACKEND_V2_POST_URL=https://${DOMAIN}/api/v2
@@ -22,7 +23,7 @@ services:
 
   excalidraw-room:
     image: excalidraw/excalidraw-room:latest
-    restart: on-failure
+    restart: unless-stopped
     networks:
       - public
     labels:
